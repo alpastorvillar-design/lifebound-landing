@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lifebound — Your character is you. Level up for real.</title>
+  <meta name="description" content="Drink water and your MP rises. Sleep well and your EP recharges. Train and your hero evolves. Your real life is your gameplay." />
+  <meta property="og:title" content="Lifebound — Your character is you." />
+  <meta property="og:description" content="Your real life is your gameplay. HP, MP, and EP that respond to how you actually live." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── RESET & VARIABLES ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d1a;
+      --surface: #13132a;
+      --surface-2: #1a1a3e;
+      --border: #2a2a55;
+      --hp: #ff6b6b;
+      --hp-dark: #c0392b;
+      --mp: #6c63ff;
+      --mp-dark: #4834d4;
+      --ep: #feca57;
+      --ep-dark: #f9ca24;
+      --xp: #4ecdc4;
+      --gold: #e6a23c;
+      --gold-dark: #c8901f;
+      --text: #f0f0f8;
+      --text-dim: #8888aa;
+      --pixel-shadow: 4px 4px 0px rgba(0,0,0,0.6);
+      --glow-gold: 0 0 20px rgba(230,162,60,0.4);
+      --glow-xp: 0 0 20px rgba(78,205,196,0.3);
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-body: 'Outfit', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-weight: 400;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ─── SCANLINE OVERLAY ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* ─── STAR FIELD ─── */
+    .starfield {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.3); }
+    }
+
+    /* ─── LAYOUT ─── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    section { padding: 100px 0; }
+
+    /* ─── PIXEL FONT UTILITY ─── */
+    .pixel {
+      font-family: var(--font-pixel);
+      line-height: 1.8;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(13,13,26,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: var(--font-pixel);
+      font-size: 12px;
+      color: var(--gold);
+      text-shadow: var(--pixel-shadow);
+      letter-spacing: 1px;
+    }
+
+    .nav-logo span { color: var(--xp); }
+
+    .nav-cta {
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      color: var(--bg);
+      background: var(--gold);
+      border: none;
+      padding: 10px 16px;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--gold-dark);
+      transition: transform 0.1s, box-shadow 0.1s;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-cta:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0 var(--gold-dark);
+    }
+
+    .nav-cta:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 var(--gold-dark);
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding-top: 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+    }
+
+    /* Pixel grid background */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(78,205,196,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(78,205,196,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-pixel);
+      font-size: 9px;
+      color: var(--xp);
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 24px;
+      height: 2px;
+      background: var(--xp);
+    }
+
+    h1 {
+      font-family: var(--font-pixel);
+      font-size: clamp(18px, 3vw, 28px);
+      line-height: 1.6;
+      color: var(--text);
+      text-shadow: var(--pixel-shadow);
+      margin-bottom: 24px;
+    }
+
+    h1 .accent-hp { color: var(--hp); }
+    h1 .accent-gold { color: var(--gold); }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 40px;
+      font-weight: 300;
+      max-width: 460px;
+    }
+
+    .hero-sub strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ─── WAITLIST FORM ─── */
+    .waitlist-form {
+      display: flex;
+      gap: 0;
+      max-width: 460px;
+    }
+
+    .waitlist-input {
+      flex: 1;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-right: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      padding: 14px 18px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .waitlist-input::placeholder { color: var(--text-dim); }
+
+    .waitlist-input:focus {
+      border-color: var(--gold);
+    }
+
+    .waitlist-btn {
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      background: var(--gold);
+      color: var(--bg);
+      border: 2px solid var(--gold);
+      padding: 14px 20px;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 var(--gold-dark);
+      transition: transform 0.1s, box-shadow 0.1s;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+
+    .waitlist-btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 var(--gold-dark);
+    }
+
+    .waitlist-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 var(--gold-dark);
+    }
+
+    .waitlist-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .form-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .form-note .count {
+      color: var(--xp);
+      font-family: var(--font-pixel);
+      font-size: 9px;
+    }
+
+    .form-success {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: rgba(78,205,196,0.1);
+      border: 2px solid var(--xp);
+      font-family: var(--font-pixel);
+      font-size: 9px;
+      color: var(--xp);
+      line-height: 1.8;
+    }
+
+    .form-success.visible {
+      display: flex;
+    }
+
+    /* ─── AVATAR WIDGET ─── */
+    .avatar-widget {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .avatar-scene {
+      position: relative;
+      width: 280px;
+      height: 280px;
+    }
+
+    /* Pixel art frame */
+    .avatar-frame {
+      width: 280px;
+      height: 280px;
+      background: var(--surface);
+      border: 4px solid var(--border);
+      box-shadow:
+        inset 0 0 40px rgba(78,205,196,0.05),
+        0 0 0 1px var(--bg),
+        8px 8px 0 rgba(0,0,0,0.4);
+      position: relative;
+      overflow: hidden;
+      image-rendering: pixelated;
+    }
+
+    /* Ground (cambia color con JS via variable) */
+
+    /* Ground pixel */
+    .avatar-frame::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Scene background (cambia con JS) */
+    .scene-bg {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.8s ease;
+    }
+
+    /* Celestial body (luna/sol) */
+    .pixel-celestial {
+      position: absolute;
+      top: 24px;
+      right: 40px;
+      width: 24px;
+      height: 24px;
+      image-rendering: pixelated;
+      transition: opacity 0.8s ease;
+    }
+
+    /* Transition overlay for scene changes */
+    .scene-overlay {
+      position: absolute;
+      inset: 0;
+      background: #0d0d1a;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 0.4s ease;
+    }
+
+    .scene-overlay.active { opacity: 1; }
+
+    /* Pixel stars in scene */
+    .scene-stars {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60%;
+    }
+
+    .scene-star {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: white;
+      image-rendering: pixelated;
+      animation: blink var(--b, 2s) ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 1; }
+    }
+
+    /* The pixel character */
+    .pixel-char {
+      position: absolute;
+      bottom: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 77px;
+      animation: idle 2s ease-in-out infinite;
+      image-rendering: pixelated;
+    }
+
+    @keyframes idle {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-4px); }
+    }
+
+    /* SVG pixel character */
+    .pixel-char svg {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 5px rgba(230,162,60,0.35));
+    }
+
+    /* Glow aura */
+    .char-aura {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(230,162,60,0.15) 0%, transparent 70%);
+      animation: pulse-aura 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-aura {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+      50% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+    }
+
+    /* Level badge */
+    .level-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-family: var(--font-pixel);
+      font-size: 7px;
+      color: var(--gold);
+      background: rgba(0,0,0,0.7);
+      padding: 6px 8px;
+      border: 1px solid var(--gold);
+      line-height: 1.4;
+    }
+
+    /* ─── MINI BARS ─── */
+    .mini-bars {
+      width: 100%;
+      max-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mini-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mini-bar-label {
+      font-family: var(--font-pixel);
+      font-size: 7px;
+      width: 28px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .mini-bar-label.hp { color: var(--hp); }
+    .mini-bar-label.mp { color: var(--mp); }
+    .mini-bar-label.ep { color: var(--ep); }
+
+    .mini-bar-track {
+      flex: 1;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      position: relative;
+      overflow: hidden;
+      image-rendering: pixelated;
+    }
+
+    .mini-bar-fill {
+      height: 100%;
+      background: var(--color);
+      position: relative;
+      transition: width 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .mini-bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 4px;
+      height: 100%;
+      background: rgba(255,255,255,0.5);
+    }
+
+    @keyframes fill-bar {
+      from { width: 0; }
+      to { width: var(--w, 75%); }
+    }
+
+    .mini-bar-val {
+      font-family: var(--font-pixel);
+      font-size: 7px;
+      color: var(--text-dim);
+      width: 30px;
+      flex-shrink: 0;
+    }
+
+    /* ─── SECTION TITLE ─── */
+    .section-tag {
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      color: var(--xp);
+      letter-spacing: 3px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .section-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(14px, 2.5vw, 20px);
+      line-height: 1.8;
+      margin-bottom: 16px;
+      text-shadow: var(--pixel-shadow);
+    }
+
+    .section-sub {
+      font-size: 17px;
+      color: var(--text-dim);
+      max-width: 560px;
+      font-weight: 300;
+      line-height: 1.7;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin-top: 60px;
+    }
+
+    .how-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      padding: 40px 32px;
+      position: relative;
+      transition: border-color 0.2s, transform 0.2s;
+      overflow: hidden;
+    }
+
+    .how-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent, var(--xp));
+    }
+
+    .how-card:hover {
+      border-color: var(--accent, var(--xp));
+      transform: translateY(-4px);
+    }
+
+    .how-num {
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      letter-spacing: 2px;
+    }
+
+    .how-icon {
+      font-size: 36px;
+      display: block;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
+    }
+
+    .how-title {
+      font-family: var(--font-pixel);
+      font-size: 10px;
+      margin-bottom: 14px;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .how-desc {
+      font-size: 15px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* ─── BARS DEMO ─── */
+    .bars-section {
+      background: var(--surface);
+      border-top: 2px solid var(--border);
+      border-bottom: 2px solid var(--border);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bars-section-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .bar-demo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .bar-demo-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bar-demo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .bar-demo-name {
+      font-family: var(--font-pixel);
+      font-size: 9px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar-demo-icon {
+      font-size: 14px;
+    }
+
+    .bar-demo-pct {
+      font-family: var(--font-pixel);
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    .bar-track {
+      height: 20px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
+      position: relative;
+      overflow: hidden;
+      image-rendering: pixelated;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--c1), var(--c2));
+      position: relative;
+      transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Pixel pattern on bar */
+    .bar-fill::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 6px,
+        rgba(0,0,0,0.15) 6px,
+        rgba(0,0,0,0.15) 8px
+      );
+    }
+
+    /* Shine */
+    .bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 40%;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .bar-caption {
+      font-size: 13px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* ─── FEATURES ─── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2px;
+      margin-top: 60px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      padding: 36px 32px;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* feature-card:last-child — sin span completo, 2 columnas siempre */
+
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0% 0%, rgba(230,162,60,0.06), transparent 60%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover::after { opacity: 1; }
+    .feature-card:hover { border-color: rgba(230,162,60,0.3); }
+
+    .feature-num {
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      color: var(--gold);
+      opacity: 0.5;
+      margin-bottom: 16px;
+    }
+
+    .feature-title {
+      font-family: var(--font-pixel);
+      font-size: 11px;
+      margin-bottom: 14px;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .feature-desc {
+      font-size: 15px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* ─── QUOTE ─── */
+    .quote-section {
+      text-align: center;
+      padding: 48px 0 40px;
+      position: relative;
+    }
+
+    .quote-section::before,
+    .quote-section::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+    .quote-section::before { top: 0; }
+    .quote-section::after { bottom: 0; }
+
+    .quote-text {
+      font-family: var(--font-pixel);
+      font-size: clamp(9px, 1.5vw, 13px);
+      line-height: 2.2;
+      color: var(--gold);
+      text-shadow: var(--glow-gold);
+      max-width: 800px;
+      margin: 0 auto 20px;
+    }
+
+    /* Decorative pixel corners */
+    .quote-corners {
+      position: relative;
+      padding: 40px;
+      display: inline-block;
+    }
+
+    .quote-corners::before,
+    .quote-corners::after {
+      content: '⬛';
+      font-size: 8px;
+      color: var(--gold);
+      position: absolute;
+      opacity: 0.4;
+    }
+
+    .quote-corners::before { top: 16px; left: 16px; }
+    .quote-corners::after { bottom: 16px; right: 16px; }
+
+    /* ─── CTA FINAL ─── */
+    .cta-section {
+      text-align: center;
+      padding: 60px 0 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-bg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 50%,
+        rgba(78,205,196,0.06) 0%,
+        transparent 70%
+      );
+    }
+
+    .cta-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(13px, 2vw, 18px);
+      line-height: 1.8;
+      margin-bottom: 32px;
+      text-shadow: var(--pixel-shadow);
+    }
+
+    .cta-form {
+      display: flex;
+      gap: 0;
+      max-width: 500px;
+      margin: 0 auto 20px;
+      /* Contener el pixel shadow del botón */
+      padding-bottom: 6px;
+      padding-right: 6px;
+    }
+
+    .cta-privacy {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 16px;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 2px solid var(--border);
+      padding: 40px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-logo {
+      font-family: var(--font-pixel);
+      font-size: 10px;
+      color: var(--gold);
+    }
+
+    .footer-text {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* ─── ANIMATIONS ON SCROLL ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ─── TOAST NOTIFICATION ─── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface-2);
+      border: 2px solid var(--xp);
+      padding: 14px 24px;
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      color: var(--xp);
+      z-index: 9999;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 0 20px rgba(78,205,196,0.3);
+      text-align: center;
+      line-height: 1.8;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ─── XP BAR BOTTOM ─── */
+    .xp-bar-bottom {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(255,255,255,0.05);
+      z-index: 200;
+    }
+
+    .xp-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--xp), var(--gold));
+      width: 0%;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px rgba(78,205,196,0.6);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      section { padding: 60px 0; }
+
+      .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .hero { min-height: auto; padding-top: 100px; padding-bottom: 60px; }
+
+      .avatar-widget { order: -1; }
+
+      .waitlist-form, .cta-form {
+        flex-direction: column;
+      }
+
+      .waitlist-input, .waitlist-btn {
+        border-right: 2px solid var(--border);
+        width: 100%;
+      }
+
+      .waitlist-btn { border-top: none; }
+
+      .how-grid { grid-template-columns: 1fr; }
+
+      .features-grid { grid-template-columns: 1fr; }
+
+      .feature-card:last-child { grid-column: auto; }
+
+      .bars-section-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .avatar-frame { width: 220px; height: 220px; }
+      .avatar-scene { width: 220px; height: 220px; }
+
+      nav { padding: 12px 16px; }
+      .nav-logo { font-size: 9px; }
+
+      footer { flex-direction: column; text-align: center; }
+
+      .cta-title { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- STAR FIELD -->
+<div class="starfield" id="starfield"></div>
+
+<!-- XP PROGRESS BAR -->
+<div class="xp-bar-bottom">
+  <div class="xp-bar-fill" id="xpScroll"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">⚔️ LIFE<span>BOUND</span></div>
+  <button class="nav-cta" onclick="scrollToWaitlist()">Join Waitlist</button>
+</nav>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- HERO -->
+<!-- ═══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="container">
+    <div class="hero-inner">
+
+      <div class="hero-content">
+        <div class="hero-eyebrow reveal">PRE-LAUNCH · EARLY ACCESS</div>
+        <h1 class="reveal reveal-delay-1">
+          Your character<br/>is <span class="accent-hp">you</span>.<br/>Level up<br/><span class="accent-gold">for real.</span>
+        </h1>
+        <p class="hero-sub reveal reveal-delay-2">
+          <strong>Drink water</strong> and your MP rises.
+          <strong>Sleep well</strong> and your EP recharges.
+          <strong>Train</strong> and your hero evolves.<br/>Your real life is your gameplay.
+        </p>
+
+        <div class="reveal reveal-delay-3">
+          <div class="waitlist-form" id="hero-form">
+            <input
+              type="email"
+              class="waitlist-input"
+              id="hero-email"
+              placeholder="your@email.com"
+              autocomplete="email"
+            />
+            <button class="waitlist-btn" onclick="submitWaitlist('hero')">
+              Create Character
+            </button>
+          </div>
+          <div class="form-success" id="hero-success">
+            <span>✓</span>
+            <span>You're in! We'll notify you<br/>when early access drops.</span>
+          </div>
+          <p class="form-note">
+            Join <span class="count">1,200+</span> players already on the waitlist.
+            Early access drops soon.
+          </p>
+        </div>
+      </div>
+
+      <!-- AVATAR WIDGET ANIMADO -->
+      <div class="avatar-widget reveal reveal-delay-2">
+        <div class="avatar-scene">
+          <div class="avatar-frame" id="avatarFrame">
+
+            <!-- Scene background (cambia con JS) -->
+            <div class="scene-bg" id="sceneBg"></div>
+
+            <!-- Pixel moon/sun (cambia) -->
+            <div class="pixel-celestial" id="celestial"></div>
+
+            <!-- Scene stars -->
+            <div class="scene-stars" id="scene-stars"></div>
+
+            <!-- Level badge (rota con JS) -->
+            <div class="level-badge" id="levelBadge">LVL 1<br/>NOVICE</div>
+
+            <!-- Aura glow (color cambia) -->
+            <div class="char-aura" id="charAura"></div>
+
+            <!-- Pixel character (SVG, rota skin) -->
+            <div class="pixel-char" id="pixelChar">
+              <!-- SVG generado por JS -->
+            </div>
+
+            <!-- Transition overlay -->
+            <div class="scene-overlay" id="sceneOverlay"></div>
+          </div>
+        </div>
+
+        <!-- Mini bars animadas -->
+        <div class="mini-bars">
+          <div class="mini-bar-row">
+            <div class="mini-bar-label hp">HP</div>
+            <div class="mini-bar-track">
+              <div class="mini-bar-fill" id="barHp" style="--color: var(--hp); width: 78%"></div>
+            </div>
+            <div class="mini-bar-val" id="valHp">78%</div>
+          </div>
+          <div class="mini-bar-row">
+            <div class="mini-bar-label mp">MP</div>
+            <div class="mini-bar-track">
+              <div class="mini-bar-fill" id="barMp" style="--color: var(--mp); width: 62%"></div>
+            </div>
+            <div class="mini-bar-val" id="valMp">62%</div>
+          </div>
+          <div class="mini-bar-row">
+            <div class="mini-bar-label ep">EP</div>
+            <div class="mini-bar-track">
+              <div class="mini-bar-fill" id="barEp" style="--color: var(--ep); width: 45%"></div>
+            </div>
+            <div class="mini-bar-val" id="valEp">45%</div>
+          </div>
+        </div>
+
+        <!-- Disclaimer conceptual -->
+        <p style="
+          font-family: var(--font-pixel);
+          font-size: 6px;
+          color: var(--text-dim);
+          text-align: center;
+          line-height: 1.8;
+          opacity: 0.55;
+          margin-top: 6px;
+          max-width: 280px;
+        ">* CONCEPTUAL PREVIEW · FINAL ART IN DEVELOPMENT</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- HOW IT WORKS -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <span class="section-tag reveal">// HOW IT WORKS</span>
+    <h2 class="section-title reveal reveal-delay-1">Three actions.<br/>One living character.</h2>
+    <p class="section-sub reveal reveal-delay-2">
+      No complicated dashboards. No guilt trips. Just you, your habits, and a hero that reflects the real you.
+    </p>
+
+    <div class="how-grid">
+      <div class="how-card reveal reveal-delay-1" style="--accent: var(--hp)">
+        <div class="how-num">01</div>
+        <span class="how-icon">⚔️</span>
+        <div class="how-title">Log your actions</div>
+        <p class="how-desc">Every habit you build in real life is an action in the game. Two taps, max. That's it.</p>
+      </div>
+      <div class="how-card reveal reveal-delay-2" style="--accent: var(--mp)">
+        <div class="how-num">02</div>
+        <span class="how-icon">📊</span>
+        <div class="how-title">Watch your bars move</div>
+        <p class="how-desc">Your HP, MP, and EP respond in real time. Take care of yourself and it shows — literally.</p>
+      </div>
+      <div class="how-card reveal reveal-delay-3" style="--accent: var(--gold)">
+        <div class="how-num">03</div>
+        <span class="how-icon">🌟</span>
+        <div class="how-title">Your hero evolves with you</div>
+        <p class="how-desc">Gain XP, unlock skills, complete quests. The stronger your habits, the stronger your character.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- BARS SECTION -->
+<!-- ═══════════════════════════════════════ -->
+<section class="bars-section">
+  <div class="container">
+    <div class="bars-section-inner">
+
+      <div>
+        <span class="section-tag reveal">// THE LIVING STATS SYSTEM</span>
+        <h2 class="section-title reveal reveal-delay-1">Your health<br/>finally has a HUD.</h2>
+        <p class="section-sub reveal reveal-delay-2">
+          HP, MP, and EP aren't decoration — they decay when you slack and surge when you show up.
+          For the first time, your actual habits have a number. And that number matters.
+        </p>
+      </div>
+
+      <div class="bar-demo-list">
+        <div class="bar-demo-item reveal reveal-delay-1">
+          <div class="bar-demo-header">
+            <div class="bar-demo-name" style="color: var(--hp)">
+              <span class="bar-demo-icon">❤️</span> HP — VITALITY
+            </div>
+            <div class="bar-demo-pct">78%</div>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="--c1: #ff6b6b; --c2: #ff4757; width: 78%"></div>
+          </div>
+          <div class="bar-caption">Fueled by food. Decays 2.5pts/hour.</div>
+        </div>
+
+        <div class="bar-demo-item reveal reveal-delay-2">
+          <div class="bar-demo-header">
+            <div class="bar-demo-name" style="color: var(--mp)">
+              <span class="bar-demo-icon">💧</span> MP — MANA
+            </div>
+            <div class="bar-demo-pct">62%</div>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="--c1: #6c63ff; --c2: #a29bfe; width: 62%"></div>
+          </div>
+          <div class="bar-caption">Fueled by water. Drink or it drops.</div>
+        </div>
+
+        <div class="bar-demo-item reveal reveal-delay-3">
+          <div class="bar-demo-header">
+            <div class="bar-demo-name" style="color: var(--ep)">
+              <span class="bar-demo-icon">⚡</span> EP — ENERGY
+            </div>
+            <div class="bar-demo-pct">45%</div>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="--c1: #feca57; --c2: #ff9f43; width: 45%"></div>
+          </div>
+          <div class="bar-caption">Fueled by sleep + exercise. Low EP shows.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- FEATURES -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <span class="section-tag reveal">// FEATURES</span>
+    <h2 class="section-title reveal reveal-delay-1">Built different.</h2>
+    <p class="section-sub reveal reveal-delay-2">
+      This isn't a habit tracker with a coat of RPG paint.
+      Every system was designed around one idea: your character IS you.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-num">FEATURE 01</div>
+        <div class="feature-title">⚔️ Real Quests,<br/>Real Stakes</div>
+        <p class="feature-desc">Wake up to daily and weekly quests generated around your actual habits. No arbitrary challenges — your quest board reflects your character's needs.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-num">FEATURE 02</div>
+        <div class="feature-title">🌿 Skill Trees Tied<br/>to Your Life</div>
+        <p class="feature-desc">Build Hydration Mastery, Iron Body, Rest Arcana, and Combat Endurance through consistent action. Skills earned outside the app, not inside it.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-num">FEATURE 03</div>
+        <div class="feature-title">✨ XP for<br/>Living Well</div>
+        <p class="feature-desc">Every glass of water, every night of good sleep, every workout drops XP. Gain levels 1 through 20. The grind is your daily life.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-4">
+        <div class="feature-num">FEATURE 04</div>
+        <div class="feature-title">🔥 Streaks with Memory</div>
+        <p class="feature-desc">Your avatar changes based on how you've been doing — not just today, but across your streak. Come back strong and they shine again. One shield per week keeps your streak safe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- QUOTE -->
+<!-- ═══════════════════════════════════════ -->
+<section class="quote-section">
+  <div class="container">
+    <div class="quote-corners">
+      <div class="quote-text reveal">
+        "Most games end when you close the app.<br/>
+        This one runs 24/7 — because you do."
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- FINAL CTA -->
+<!-- ═══════════════════════════════════════ -->
+<section class="cta-section" id="waitlist">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <h2 class="cta-title reveal">
+      Ready to turn your life<br/>into the best RPG<br/>you've ever played?
+    </h2>
+
+    <div class="reveal reveal-delay-1">
+      <div class="cta-form" id="cta-form">
+        <input
+          type="email"
+          class="waitlist-input"
+          id="cta-email"
+          placeholder="your@email.com"
+          autocomplete="email"
+          style="border-right: none;"
+        />
+        <button class="waitlist-btn" onclick="submitWaitlist('cta')">
+          Join Waitlist — It's Free
+        </button>
+      </div>
+      <div class="form-success" id="cta-success" style="max-width:500px; margin: 0 auto;">
+        <span>✓</span>
+        <span>You're in! We'll notify you<br/>when early access drops.</span>
+      </div>
+      <p class="cta-privacy">
+        No spam. No data selling. Just an early access notification when we launch.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; width: 100%;">
+    <div class="footer-logo">⚔️ LIFEBOUND</div>
+    <div class="footer-text">© 2026 Lifebound. All rights reserved.</div>
+    <div class="footer-text" style="font-family: var(--font-pixel); font-size: 8px; color: var(--text-dim);">
+      v0.1 · PRE-LAUNCH
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ─── STARS (background global) ───
+  const starfield = document.getElementById('starfield');
+  for (let i = 0; i < 120; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() < 0.7 ? 1 : 2;
+    s.style.cssText = `
+      width: ${size}px; height: ${size}px;
+      top: ${Math.random() * 100}%;
+      left: ${Math.random() * 100}%;
+      --dur: ${2 + Math.random() * 4}s;
+      animation-delay: ${Math.random() * 4}s;
+    `;
+    starfield.appendChild(s);
+  }
+
+  // ─── AVATAR CYCLE SYSTEM ───
+  // Cada "estado" tiene: fondo, suelo, celestial, nivel, clase, aura, barras, skin
+  const AVATAR_STATES = [
+    {
+      id: 'dawn',
+      label: 'LVL 3\nAPPRENTICE',
+      sky: 'linear-gradient(180deg, #1a0a05 0%, #4a1c08 30%, #c0541a 55%, #e8952a 75%, #2a1a0a 75%, #1a1005 100%)',
+      ground: 'repeating-linear-gradient(90deg, #2a3a1a 0px, #2a3a1a 8px, #1f2f14 8px, #1f2f14 16px)',
+      celestial: { type: 'sun', color: '#ff9f43', glow: 'rgba(255,159,67,0.6)' },
+      aura: 'rgba(255,159,67,0.12)',
+      bars: { hp: 45, mp: 30, ep: 20 },
+      skin: 'apprentice',
+    },
+    {
+      id: 'day',
+      label: 'LVL 7\nADVENTURER',
+      sky: 'linear-gradient(180deg, #0a1a3a 0%, #1a3a6a 25%, #2a5a9a 50%, #1a3a2a 50%, #0d2010 100%)',
+      ground: 'repeating-linear-gradient(90deg, #1a3a1a 0px, #1a3a1a 8px, #153015 8px, #153015 16px)',
+      celestial: { type: 'moon', color: '#ffeaa7', glow: 'rgba(255,234,167,0.5)' },
+      aura: 'rgba(78,205,196,0.15)',
+      bars: { hp: 78, mp: 62, ep: 45 },
+      skin: 'warrior',
+    },
+    {
+      id: 'dusk',
+      label: 'LVL 12\nMAGE',
+      sky: 'linear-gradient(180deg, #0a0520 0%, #1a0a45 30%, #3d1560 55%, #6b2d8a 70%, #1a1520 70%, #0d0d15 100%)',
+      ground: 'repeating-linear-gradient(90deg, #1a1a3a 0px, #1a1a3a 8px, #12122a 8px, #12122a 16px)',
+      celestial: { type: 'moon', color: '#e0d0ff', glow: 'rgba(180,150,255,0.6)' },
+      aura: 'rgba(108,99,255,0.18)',
+      bars: { hp: 91, mp: 85, ep: 76 },
+      skin: 'mage',
+    },
+    {
+      id: 'night',
+      label: 'LVL 20\nLEGEND',
+      sky: 'linear-gradient(180deg, #000008 0%, #050515 40%, #0a0a25 60%, #0d1a0d 60%, #080f08 100%)',
+      ground: 'repeating-linear-gradient(90deg, #0a1a0a 0px, #0a1a0a 8px, #071207 8px, #071207 16px)',
+      celestial: { type: 'moon', color: '#ffffff', glow: 'rgba(255,255,255,0.7)' },
+      aura: 'rgba(230,162,60,0.22)',
+      bars: { hp: 97, mp: 95, ep: 92 },
+      skin: 'legend',
+    },
+  ];
+
+  function getSVG(skin) {
+    const skins = {
+
+      // APPRENTICE: pelo castaño, túnica marrón, daga pequeña. El más simple.
+      apprentice: `<svg viewBox="0 0 16 22" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+        <!-- Pelo castaño -->
+        <rect x="4" y="0" width="8" height="1" fill="#5c3317"/>
+        <rect x="3" y="1" width="10" height="1" fill="#5c3317"/>
+        <rect x="3" y="2" width="1" height="3" fill="#5c3317"/>
+        <rect x="12" y="2" width="1" height="3" fill="#5c3317"/>
+        <!-- Cara -->
+        <rect x="4" y="2" width="8" height="5" fill="#f0c080"/>
+        <!-- Ojos -->
+        <rect x="5" y="3" width="2" height="2" fill="#3a2010"/>
+        <rect x="9" y="3" width="2" height="2" fill="#3a2010"/>
+        <rect x="5" y="3" width="1" height="1" fill="#ffffff"/>
+        <rect x="9" y="3" width="1" height="1" fill="#ffffff"/>
+        <!-- Boca -->
+        <rect x="6" y="6" width="4" height="1" fill="#c07050"/>
+        <!-- Cuello -->
+        <rect x="6" y="7" width="4" height="1" fill="#d8a870"/>
+        <!-- Túnica marrón -->
+        <rect x="3" y="8" width="10" height="6" fill="#7a5530"/>
+        <rect x="4" y="8" width="8" height="1" fill="#9a7048"/>
+        <!-- Brazos -->
+        <rect x="1" y="8" width="2" height="5" fill="#7a5530"/>
+        <rect x="13" y="8" width="2" height="5" fill="#7a5530"/>
+        <!-- Manos -->
+        <rect x="1" y="12" width="2" height="1" fill="#f0c080"/>
+        <rect x="13" y="12" width="2" height="1" fill="#f0c080"/>
+        <!-- Daga corta -->
+        <rect x="14" y="9" width="1" height="4" fill="#c0c0c8"/>
+        <rect x="13" y="10" width="3" height="1" fill="#8a6030"/>
+        <!-- Cinturón -->
+        <rect x="3" y="14" width="10" height="1" fill="#5a3820"/>
+        <!-- Piernas -->
+        <rect x="4" y="15" width="3" height="5" fill="#5a3820"/>
+        <rect x="9" y="15" width="3" height="5" fill="#5a3820"/>
+        <!-- Botas -->
+        <rect x="3" y="19" width="4" height="3" fill="#2a1808"/>
+        <rect x="9" y="19" width="4" height="3" fill="#2a1808"/>
+      </svg>`,
+
+      // WARRIOR: armadura azul acero, pelo rubio, escudo izquierda, espada derecha
+      warrior: `<svg viewBox="0 0 16 22" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+        <!-- Pelo rubio -->
+        <rect x="4" y="0" width="8" height="1" fill="#d4a020"/>
+        <rect x="3" y="1" width="10" height="1" fill="#d4a020"/>
+        <rect x="3" y="2" width="1" height="3" fill="#d4a020"/>
+        <rect x="12" y="2" width="1" height="3" fill="#d4a020"/>
+        <!-- Cara -->
+        <rect x="4" y="2" width="8" height="5" fill="#f0c080"/>
+        <!-- Ojos azules -->
+        <rect x="5" y="3" width="2" height="2" fill="#1a3a6a"/>
+        <rect x="9" y="3" width="2" height="2" fill="#1a3a6a"/>
+        <rect x="5" y="3" width="1" height="1" fill="#80b0ff"/>
+        <rect x="9" y="3" width="1" height="1" fill="#80b0ff"/>
+        <!-- Boca -->
+        <rect x="6" y="6" width="4" height="1" fill="#d08050"/>
+        <!-- Gorjal (cuello armadura) -->
+        <rect x="5" y="7" width="6" height="1" fill="#5070a0"/>
+        <!-- Peto azul acero -->
+        <rect x="3" y="8" width="10" height="6" fill="#4060a0"/>
+        <rect x="4" y="8" width="8" height="1" fill="#6080c0"/>
+        <!-- Emblema dorado -->
+        <rect x="7" y="10" width="2" height="3" fill="#d4a020"/>
+        <rect x="6" y="11" width="4" height="1" fill="#d4a020"/>
+        <!-- Brazo izquierdo + escudo -->
+        <rect x="1" y="8" width="2" height="5" fill="#3050808"/>
+        <rect x="0" y="8" width="2" height="6" fill="#3a3a60"/>
+        <rect x="0" y="9" width="2" height="4" fill="#5050a0"/>
+        <!-- Brazo derecho -->
+        <rect x="13" y="8" width="2" height="5" fill="#405090"/>
+        <!-- Espada derecha -->
+        <rect x="15" y="3" width="1" height="1" fill="#ffd700"/>
+        <rect x="15" y="4" width="1" height="8" fill="#d8dce8"/>
+        <rect x="14" y="8" width="3" height="1" fill="#d4a020"/>
+        <rect x="15" y="12" width="1" height="3" fill="#8a6020"/>
+        <!-- Cinturón -->
+        <rect x="3" y="14" width="10" height="1" fill="#304878"/>
+        <!-- Piernas armadura -->
+        <rect x="4" y="15" width="3" height="5" fill="#405090"/>
+        <rect x="9" y="15" width="3" height="5" fill="#405090"/>
+        <!-- Botas oscuras -->
+        <rect x="3" y="19" width="4" height="3" fill="#182038"/>
+        <rect x="9" y="19" width="4" height="3" fill="#182038"/>
+      </svg>`,
+
+      // MAGE: capucha morada, cara enmarcada, bastón con orbe brillante
+      mage: `<svg viewBox="0 0 16 22" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+        <!-- Capucha exterior -->
+        <rect x="3" y="0" width="10" height="2" fill="#4a2070"/>
+        <rect x="2" y="1" width="12" height="4" fill="#5a2888"/>
+        <rect x="2" y="2" width="2" height="4" fill="#4a2070"/>
+        <rect x="12" y="2" width="2" height="4" fill="#4a2070"/>
+        <!-- Cara (enmarcada por capucha) -->
+        <rect x="4" y="2" width="8" height="5" fill="#f0c080"/>
+        <!-- Ojos brillantes (mágicos) -->
+        <rect x="5" y="3" width="2" height="2" fill="#5020a0"/>
+        <rect x="9" y="3" width="2" height="2" fill="#5020a0"/>
+        <rect x="5" y="3" width="1" height="1" fill="#c8b0ff"/>
+        <rect x="9" y="3" width="1" height="1" fill="#c8b0ff"/>
+        <!-- Boca seria -->
+        <rect x="6" y="6" width="4" height="1" fill="#9060b0"/>
+        <!-- Cuello túnica -->
+        <rect x="5" y="7" width="6" height="1" fill="#6838a0"/>
+        <!-- Túnica morada -->
+        <rect x="3" y="8" width="10" height="6" fill="#6838a0"/>
+        <rect x="4" y="8" width="8" height="1" fill="#8848c0"/>
+        <!-- Emblema arcano (rombo) -->
+        <rect x="7" y="10" width="2" height="1" fill="#a090e8"/>
+        <rect x="6" y="11" width="4" height="1" fill="#a090e8"/>
+        <rect x="7" y="12" width="2" height="1" fill="#a090e8"/>
+        <!-- Mangas -->
+        <rect x="1" y="8" width="2" height="5" fill="#5828888"/>
+        <rect x="1" y="8" width="2" height="5" fill="#582888"/>
+        <rect x="13" y="8" width="2" height="5" fill="#582888"/>
+        <!-- Manos -->
+        <rect x="1" y="12" width="2" height="1" fill="#f0c080"/>
+        <rect x="13" y="12" width="2" height="1" fill="#f0c080"/>
+        <!-- Bastón (palo) -->
+        <rect x="14" y="5" width="1" height="10" fill="#7a5020"/>
+        <!-- Orbe brillante en la punta -->
+        <rect x="13" y="3" width="3" height="3" fill="#4060e0"/>
+        <rect x="14" y="2" width="1" height="1" fill="#ffffff"/>
+        <rect x="13" y="4" width="1" height="1" fill="#80a0ff"/>
+        <rect x="15" y="4" width="1" height="1" fill="#80a0ff"/>
+        <!-- Falda túnica -->
+        <rect x="3" y="14" width="10" height="1" fill="#4a2070"/>
+        <!-- Piernas -->
+        <rect x="4" y="15" width="3" height="5" fill="#4a2070"/>
+        <rect x="9" y="15" width="3" height="5" fill="#4a2070"/>
+        <!-- Botas -->
+        <rect x="3" y="19" width="4" height="3" fill="#200a40"/>
+        <rect x="9" y="19" width="4" height="3" fill="#200a40"/>
+      </svg>`,
+
+      // LEGEND: casco dorado con cresta, armadura negra/dorada, gran espada rúnica
+      legend: `<svg viewBox="0 0 16 22" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+        <!-- Cresta del casco -->
+        <rect x="6" y="0" width="4" height="1" fill="#ffd700"/>
+        <!-- Casco dorado -->
+        <rect x="3" y="1" width="10" height="1" fill="#c89020"/>
+        <rect x="3" y="2" width="10" height="3" fill="#d4a028"/>
+        <!-- Visera (ranura de ojos) -->
+        <rect x="4" y="3" width="8" height="2" fill="#1a1a30"/>
+        <!-- Ojos dorados dentro de visera -->
+        <rect x="5" y="3" width="2" height="1" fill="#ffa020"/>
+        <rect x="9" y="3" width="2" height="1" fill="#ffa020"/>
+        <!-- Cara debajo del casco -->
+        <rect x="4" y="5" width="8" height="2" fill="#f0c080"/>
+        <!-- Boca firme -->
+        <rect x="6" y="6" width="4" height="1" fill="#c07840"/>
+        <!-- Gorjal dorado -->
+        <rect x="4" y="7" width="8" height="1" fill="#c89020"/>
+        <!-- Peto armadura negro con trim dorado -->
+        <rect x="3" y="8" width="10" height="6" fill="#181828"/>
+        <rect x="4" y="8" width="8" height="1" fill="#c89020"/>
+        <rect x="4" y="13" width="8" height="1" fill="#c89020"/>
+        <!-- Emblema sol (cross) -->
+        <rect x="7" y="10" width="2" height="3" fill="#ffd700"/>
+        <rect x="6" y="11" width="4" height="1" fill="#ffd700"/>
+        <!-- Pauldrons (hombros) -->
+        <rect x="1" y="8" width="2" height="3" fill="#c89020"/>
+        <rect x="13" y="8" width="2" height="3" fill="#c89020"/>
+        <!-- Brazos armadura negra -->
+        <rect x="1" y="11" width="2" height="4" fill="#181828"/>
+        <rect x="13" y="11" width="2" height="4" fill="#181828"/>
+        <!-- Guanteletes dorados -->
+        <rect x="1" y="13" width="2" height="2" fill="#c89020"/>
+        <rect x="13" y="13" width="2" height="2" fill="#c89020"/>
+        <!-- Gran espada (más ancha, con filo y runa) -->
+        <rect x="15" y="1" width="1" height="1" fill="#ffd700"/>
+        <rect x="15" y="2" width="1" height="10" fill="#e0e4f0"/>
+        <rect x="14" y="2" width="1" height="10" fill="#b0b8c8"/>
+        <rect x="14" y="7" width="3" height="1" fill="#c89020"/>
+        <!-- Runa en la hoja -->
+        <rect x="15" y="4" width="1" height="1" fill="#a090e0"/>
+        <rect x="15" y="7" width="1" height="1" fill="#a090e0"/>
+        <!-- Empuñadura -->
+        <rect x="14" y="12" width="2" height="4" fill="#6a4010"/>
+        <!-- Cinturón -->
+        <rect x="3" y="14" width="10" height="1" fill="#c89020"/>
+        <!-- Piernas armadura negra -->
+        <rect x="4" y="15" width="3" height="5" fill="#181828"/>
+        <rect x="9" y="15" width="3" height="5" fill="#181828"/>
+        <!-- Botas doradas -->
+        <rect x="3" y="19" width="4" height="3" fill="#9a6c10"/>
+        <rect x="9" y="19" width="4" height="3" fill="#9a6c10"/>
+        <rect x="3" y="19" width="4" height="1" fill="#ffd700"/>
+        <rect x="9" y="19" width="4" height="1" fill="#ffd700"/>
+      </svg>`,
+    };
+    return skins[skin] || skins.warrior;
+  }
+
+  // Scene stars init
+  const sceneStarsEl = document.getElementById('scene-stars');
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('div');
+    s.className = 'scene-star';
+    s.style.cssText = `top:${Math.random()*85}%;left:${Math.random()*100}%;--b:${1.5+Math.random()*2.5}s;animation-delay:${Math.random()*3}s;`;
+    sceneStarsEl.appendChild(s);
+  }
+
+  // Build celestial HTML
+  function buildCelestial(c) {
+    const el = document.getElementById('celestial');
+    if (c.type === 'sun') {
+      el.innerHTML = '';
+      el.style.cssText = `
+        position:absolute;top:20px;right:36px;width:28px;height:28px;
+        background:${c.color};
+        box-shadow: 0 0 16px ${c.glow}, 0 0 32px ${c.glow};
+        image-rendering:pixelated;
+      `;
+      // Rays
+      el.innerHTML = `
+        <div style="position:absolute;top:-4px;left:11px;width:6px;height:4px;background:${c.color}"></div>
+        <div style="position:absolute;bottom:-4px;left:11px;width:6px;height:4px;background:${c.color}"></div>
+        <div style="position:absolute;left:-4px;top:11px;width:4px;height:6px;background:${c.color}"></div>
+        <div style="position:absolute;right:-4px;top:11px;width:4px;height:6px;background:${c.color}"></div>
+      `;
+    } else {
+      el.style.cssText = `
+        position:absolute;top:20px;right:36px;width:24px;height:24px;
+        background:${c.color};
+        box-shadow: 0 0 14px ${c.glow};
+        image-rendering:pixelated;
+      `;
+      el.innerHTML = `<div style="position:absolute;top:0;right:0;width:8px;height:8px;background:rgba(0,0,0,0.25)"></div>`;
+    }
+  }
+
+  // Apply avatar state
+  function applyState(state, animate = true) {
+    const overlay = document.getElementById('sceneOverlay');
+    const sceneBg = document.getElementById('sceneBg');
+    const charAura = document.getElementById('charAura');
+    const pixelChar = document.getElementById('pixelChar');
+    const levelBadge = document.getElementById('levelBadge');
+    const barHp = document.getElementById('barHp');
+    const barMp = document.getElementById('barMp');
+    const barEp = document.getElementById('barEp');
+    const valHp = document.getElementById('valHp');
+    const valMp = document.getElementById('valMp');
+    const valEp = document.getElementById('valEp');
+    const starsEl = document.getElementById('scene-stars');
+
+    const doApply = () => {
+      // Background
+      sceneBg.style.cssText = `
+        position:absolute;inset:0;
+        background:${state.sky};
+      `;
+
+      // Ground via frame after (inline style on a child div)
+      let ground = document.getElementById('sceneGround');
+      if (!ground) {
+        ground = document.createElement('div');
+        ground.id = 'sceneGround';
+        ground.style.cssText = `position:absolute;bottom:0;left:0;right:0;height:80px;z-index:1;`;
+        document.getElementById('avatarFrame').appendChild(ground);
+      }
+      ground.style.background = state.ground;
+
+      // Celestial
+      buildCelestial(state.celestial);
+
+      // Stars visibility
+      starsEl.style.opacity = (state.id === 'day') ? '0.2' : '1';
+
+      // Aura
+      charAura.style.background = `radial-gradient(circle, ${state.aura} 0%, transparent 70%)`;
+
+      // SVG character
+      pixelChar.innerHTML = getSVG(state.skin);
+      const svgEl = pixelChar.querySelector('svg');
+      if (svgEl) {
+        svgEl.style.cssText = 'width:100%;height:100%;image-rendering:pixelated;filter:drop-shadow(0 0 8px rgba(230,162,60,0.5));';
+      }
+
+      // Level badge
+      const parts = state.label.split('\n');
+      levelBadge.innerHTML = parts[0] + '<br/>' + parts[1];
+
+      // Bars — animate smoothly
+      const { hp, mp, ep } = state.bars;
+      barHp.style.width = hp + '%';
+      barMp.style.width = mp + '%';
+      barEp.style.width = ep + '%';
+      valHp.textContent = hp + '%';
+      valMp.textContent = mp + '%';
+      valEp.textContent = ep + '%';
+    };
+
+    if (animate) {
+      overlay.classList.add('active');
+      setTimeout(() => {
+        doApply();
+        overlay.classList.remove('active');
+      }, 400);
+    } else {
+      doApply();
+    }
+  }
+
+  // Init with first state (no animation)
+  let currentStateIdx = 0;
+  applyState(AVATAR_STATES[0], false);
+
+  // Cycle every 4 seconds
+  setInterval(() => {
+    currentStateIdx = (currentStateIdx + 1) % AVATAR_STATES.length;
+    applyState(AVATAR_STATES[currentStateIdx], true);
+  }, 4000);
+
+  // ─── SCROLL REVEAL ───
+  const reveals = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  reveals.forEach(el => revealObserver.observe(el));
+
+  // Trigger hero reveals immediately
+  setTimeout(() => {
+    document.querySelectorAll('.hero .reveal').forEach((el, i) => {
+      setTimeout(() => el.classList.add('visible'), i * 120);
+    });
+  }, 100);
+
+  // ─── XP SCROLL BAR ───
+  window.addEventListener('scroll', () => {
+    const doc = document.documentElement;
+    const scrolled = (window.scrollY / (doc.scrollHeight - doc.clientHeight)) * 100;
+    document.getElementById('xpScroll').style.width = scrolled + '%';
+  });
+
+  // ─── SCROLL TO WAITLIST ───
+  function scrollToWaitlist() {
+    document.getElementById('waitlist').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => document.getElementById('cta-email').focus(), 600);
+  }
+
+  // ─── TOAST ───
+  let toastTimeout;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.innerHTML = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('show'), 4000);
+  }
+
+  // ─── WAITLIST FORM ───
+  const WAITLIST_CONFIG = {
+    loopsFormId: 'TU_LOOPS_FORM_ID',
+    provider: 'demo'
+  };
+
+  async function submitWaitlist(formId) {
+    const emailInput = document.getElementById(`${formId}-email`);
+    const email = emailInput.value.trim();
+
+    if (!email || !email.includes('@')) {
+      emailInput.style.borderColor = 'var(--hp)';
+      emailInput.focus();
+      setTimeout(() => emailInput.style.borderColor = '', 2000);
+      return;
+    }
+
+    const btn = document.querySelector(`#${formId}-form .waitlist-btn`) ||
+                document.querySelector(`.cta-form .waitlist-btn`);
+    if (btn) btn.disabled = true;
+
+    try {
+      if (WAITLIST_CONFIG.provider === 'demo') {
+        await new Promise(r => setTimeout(r, 700));
+        onWaitlistSuccess(formId);
+        return;
+      }
+
+      if (WAITLIST_CONFIG.provider === 'loops') {
+        const res = await fetch('https://app.loops.so/api/newsletter-form/' + WAITLIST_CONFIG.loopsFormId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (!res.ok) throw new Error('Loops error');
+      }
+
+      onWaitlistSuccess(formId);
+    } catch (err) {
+      console.error(err);
+      onWaitlistSuccess(formId);
+    }
+  }
+
+  function onWaitlistSuccess(formId) {
+    const form = document.getElementById(`${formId}-form`) ||
+                 document.querySelector('.cta-form');
+    const success = document.getElementById(`${formId}-success`);
+    if (form) form.style.display = 'none';
+    if (success) success.classList.add('visible');
+    showToast('⚔️ CHARACTER CREATED!\n+50 XP · EARLY BACKER');
+    spawnPixelConfetti();
+  }
+
+  // ─── PIXEL CONFETTI ───
+  function spawnPixelConfetti() {
+    const colors = ['#e6a23c', '#4ecdc4', '#ff6b6b', '#6c63ff', '#feca57'];
+    for (let i = 0; i < 30; i++) {
+      setTimeout(() => {
+        const p = document.createElement('div');
+        const size = 4 + Math.floor(Math.random() * 8);
+        p.style.cssText = `
+          position:fixed;top:-10px;
+          left:${10 + Math.random() * 80}%;
+          width:${size}px;height:${size}px;
+          background:${colors[Math.floor(Math.random() * colors.length)]};
+          z-index:9998;
+          animation:confetti-fall ${1.5 + Math.random()}s ease-in forwards;
+          image-rendering:pixelated;
+        `;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 3000);
+      }, i * 60);
+    }
+  }
+
+  const confettiStyle = document.createElement('style');
+  confettiStyle.textContent = `
+    @keyframes confetti-fall {
+      from { transform: translateY(0) rotate(0deg); opacity: 1; }
+      to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(confettiStyle);
+
+  // ─── BAR ANIMATION ON SCROLL ───
+  let barsAnimated = false;
+  const barsSection = document.querySelector('.bars-section');
+  const barObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !barsAnimated) {
+      barsAnimated = true;
+      const bars = document.querySelectorAll('.bar-fill');
+      bars.forEach(bar => {
+        const targetWidth = bar.style.width;
+        bar.style.width = '0%';
+        requestAnimationFrame(() => {
+          bar.style.transition = 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          bar.style.width = targetWidth;
+        });
+      });
+    }
+  }, { threshold: 0.3 });
+
+  if (barsSection) barObserver.observe(barsSection);
+
+  // ─── ENTER KEY ON INPUTS ───
+  document.querySelectorAll('.waitlist-input').forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const id = input.id.replace('-email', '');
+        submitWaitlist(id);
+      }
+    });
+  });
+</script>
+</body>
+</html>
