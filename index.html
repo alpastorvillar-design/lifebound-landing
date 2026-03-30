@@ -1749,8 +1749,7 @@
 
   // ─── WAITLIST FORM ───
   const WAITLIST_CONFIG = {
-    loopsFormId: 'TU_LOOPS_FORM_ID',
-    provider: 'demo'
+    provider: 'brevo'
   };
 
   async function submitWaitlist(formId) {
@@ -1782,6 +1781,15 @@
           body: JSON.stringify({ email })
         });
         if (!res.ok) throw new Error('Loops error');
+      }
+
+      if (WAITLIST_CONFIG.provider === 'brevo') {
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (!res.ok) throw new Error('Brevo error');
       }
 
       onWaitlistSuccess(formId);
