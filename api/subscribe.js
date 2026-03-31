@@ -1,10 +1,15 @@
-const ALLOWED_ORIGIN = 'https://lifebound.io';
+const ALLOWED_ORIGINS = [
+  'https://lifebound.io',
+  'https://www.lifebound.io',
+  'https://lifebound-landing.vercel.app'
+];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LENGTH = 254; // RFC 5321 limit
+const MAX_BODY_SIZE = 512;    // bytes, more than enough for an email field
 
 // Rate limiting: max 3 requests per IP per 24 hours
 const RATE_LIMIT = 3;
-const RATE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+const RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ipRequests = new Map();
 
 function getRateLimitInfo(ip) {
@@ -16,7 +21,6 @@ function getRateLimitInfo(ip) {
     return { allowed: true };
   }
 
-  // Reset window if 24h have passed
   if (now - entry.firstRequest > RATE_WINDOW_MS) {
     ipRequests.set(ip, { count: 1, firstRequest: now });
     return { allowed: true };
@@ -30,20 +34,48 @@ function getRateLimitInfo(ip) {
   return { allowed: true };
 }
 
-export default async function handler(req, res) {
-  // Only allow POST
+function setSecurityHeaders(res, origin) {
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+}
+
+module.exports = async function handler(req, res) {
+
+  // 1. CORS — check origin before anything else
+  const origin = req.headers.origin || '';
+  if (!ALLOWED_ORIGINS.includes(origin)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  // 2. Handle CORS preflight (OPTIONS)
+  if (req.method === 'OPTIONS') {
+    setSecurityHeaders(res, origin);
+    return res.status(204).end();
+  }
+
+  // 3. Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // CORS: only accept requests from lifebound.io
-  const origin = req.headers.origin || '';
-  if (origin !== ALLOWED_ORIGIN) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  setSecurityHeaders(res, origin);
 
-  // Rate limiting by IP
+  // 4. Validate Content-Type
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.includes('application/json')) {
+    return res.status(415).json({ error: 'Unsupported media type' });
+  }
+
+  // 5. Check API key is configured
+  if (!process.env.BREVO_API_KEY) {
+    return res.status(500).json({ error: 'Service unavailable' });
+  }
+
+  // 6. Rate limiting by IP
   const ip =
     req.headers['x-forwarded-for']?.split(',')[0].trim() ||
     req.socket?.remoteAddress ||
@@ -54,14 +86,20 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
-  // Validate body exists
+  // 7. Validate body exists
   if (!req.body || typeof req.body !== 'object') {
     return res.status(400).json({ error: 'Invalid request' });
   }
 
+  // 8. Check body size
+  const bodySize = JSON.stringify(req.body).length;
+  if (bodySize > MAX_BODY_SIZE) {
+    return res.status(413).json({ error: 'Request too large' });
+  }
+
   const { email } = req.body;
 
-  // Validate email
+  // 9. Validate and sanitize email
   if (
     !email ||
     typeof email !== 'string' ||
@@ -96,4 +134,4 @@ export default async function handler(req, res) {
     // Never expose internal error details
     return res.status(500).json({ error: 'Failed to subscribe. Please try again.' });
   }
-}
+};

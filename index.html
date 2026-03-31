@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.brevo.com;" />
   <title>Lifebound — Your character is you. Level up for real.</title>
   <meta name="description" content="Drink water and your MP rises. Sleep well and your EP recharges. Train and your hero evolves. Your real life is your gameplay." />
   <meta property="og:title" content="Lifebound — Your character is you." />
@@ -1042,6 +1043,7 @@
               id="hero-email"
               placeholder="your@email.com"
               autocomplete="email"
+              maxlength="254"
             />
             <button class="waitlist-btn" onclick="submitWaitlist('hero')">
               Create Character
@@ -1297,6 +1299,7 @@
           id="cta-email"
           placeholder="your@email.com"
           autocomplete="email"
+          maxlength="254"
           style="border-right: none;"
         />
         <button class="waitlist-btn" onclick="submitWaitlist('cta')">
@@ -1741,7 +1744,7 @@
   let toastTimeout;
   function showToast(msg) {
     const toast = document.getElementById('toast');
-    toast.innerHTML = msg;
+    toast.textContent = msg;
     toast.classList.add('show');
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => toast.classList.remove('show'), 4000);
@@ -1752,11 +1755,31 @@
     provider: 'brevo'
   };
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const RATE_LIMIT_KEY = 'lb_submit_ts';
+  const RATE_LIMIT_MS = 60 * 1000; // 1 submit per minute client-side
+
+  function isRateLimited() {
+    const last = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
+    return Date.now() - last < RATE_LIMIT_MS;
+  }
+
+  function markSubmit() {
+    localStorage.setItem(RATE_LIMIT_KEY, Date.now().toString());
+  }
+
   async function submitWaitlist(formId) {
     const emailInput = document.getElementById(`${formId}-email`);
     const email = emailInput.value.trim();
 
-    if (!email || !email.includes('@')) {
+    // Client-side rate limit
+    if (isRateLimited()) {
+      showToast('⏳ Please wait a moment before trying again.');
+      return;
+    }
+
+    // Client-side email validation (defense in depth)
+    if (!email || !EMAIL_REGEX.test(email) || email.length > 254) {
       emailInput.style.borderColor = 'var(--hp)';
       emailInput.focus();
       setTimeout(() => emailInput.style.borderColor = '', 2000);
@@ -1774,28 +1797,21 @@
         return;
       }
 
-      if (WAITLIST_CONFIG.provider === 'loops') {
-        const res = await fetch('https://app.loops.so/api/newsletter-form/' + WAITLIST_CONFIG.loopsFormId, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        if (!res.ok) throw new Error('Loops error');
-      }
-
       if (WAITLIST_CONFIG.provider === 'brevo') {
         const res = await fetch('/api/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
-        if (!res.ok) throw new Error('Brevo error');
+        if (!res.ok) throw new Error('Subscribe failed');
       }
 
+      markSubmit();
       onWaitlistSuccess(formId);
     } catch (err) {
-      console.error(err);
-      onWaitlistSuccess(formId);
+      // Re-enable button on error, show generic message
+      if (btn) btn.disabled = false;
+      showToast('⚠️ Something went wrong. Please try again.');
     }
   }
 
