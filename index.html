@@ -1804,7 +1804,7 @@
       }
 
       if (WAITLIST_CONFIG.provider === 'brevo') {
-        const res = await fetch('/api/subscribe', {
+        const res = await fetch('/api/join', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
